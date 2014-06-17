@@ -1,10 +1,11 @@
 #include "appliance.h"
 #include "radio.h"
 
-Appliance::Appliance(int applianceNumber, Location* location, Wt::WObject* parent)
+Appliance::Appliance(int applianceNumber, Location* location, Radio* radio, Wt::WObject* parent)
     : WObject(parent)
     , mApplianceNumber(applianceNumber)
     , mLocation(location)
+    , mRadio(radio)
 {
 }
 
@@ -18,24 +19,33 @@ Location* Appliance::location() const
     return mLocation;
 }
 
-void Appliance::activate()
+bool Appliance::activate()
 {
-    Radio::instance()->activateAppliance(this);
+    return mRadio->activateAppliance(this);
 }
 
-void Appliance::deactivate()
+bool Appliance::deactivate()
 {
-
+    return mRadio->deactivateAppliance(this);
 }
 
 void Appliance::toggle()
 {
-
+    if (mActive)
+        deactivate();
+    else
+        activate();
 }
 
 void Appliance::setActive(bool active)
 {
     if (mActive != active) {
         mActive = active;
+
+        if (mActive) {
+            activated.emit();
+        } else {
+            deactivated.emit();
+        }
     }
 }

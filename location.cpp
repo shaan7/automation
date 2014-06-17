@@ -2,9 +2,10 @@
 
 #include "appliance.h"
 
-Location::Location(int sensorId, Wt::WObject* parent)
+Location::Location(int sensorId, Radio* radio, Wt::WObject* parent)
     : WObject(parent)
     , mSensorId(sensorId)
+    , mRadio(radio)
 {
 }
 
@@ -12,7 +13,7 @@ std::unordered_map<int, Appliance*> Location::initAppliances(
     std::vector< int > applianceNumbers)
 {
     for (auto number : applianceNumbers) {
-        mAppliances.insert(std::make_pair(number, new Appliance(number, this, this)));
+        mAppliances.insert(std::make_pair(number, new Appliance(number, this, mRadio, this)));
     }
 
     return mAppliances;

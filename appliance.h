@@ -4,18 +4,19 @@
 #include <Wt/WObject>
 #include <Wt/WSignal>
 
+class Radio;
 class Location;
 
 class Appliance : public Wt::WObject
 {
 public:
-    Appliance(int applianceNumber, Location* location, WObject* parent = 0);
+    Appliance(int applianceNumber, Location* location, Radio* radio, WObject* parent = 0);
 
     int applianceNumber() const;
     Location *location() const;
 
-    void activate();
-    void deactivate();
+    bool activate();
+    bool deactivate();
     void toggle();
 
     Wt::Signal<void> activated;
@@ -25,7 +26,8 @@ public:
 
 private:
     int mApplianceNumber;
-    Location* mLocation;
+    Location *mLocation;
+    Radio *mRadio;
     bool mActive = false;
 };
 

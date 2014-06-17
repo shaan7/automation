@@ -10,6 +10,11 @@
 #include <Wt/WLineEdit>
 #include <Wt/WPushButton>
 #include <Wt/WText>
+#include <Wt/WBootstrapTheme>
+#include <Wt/WEnvironment>
+#include <Wt/WCssTheme>
+#include <Wt/WCheckBox>
+#include <Wt/WTimer>
 
 #include "radio.h"
 #include "appliance.h"
@@ -17,7 +22,11 @@
 // c++0x only, for std::bind
 // #include <functional>
 
+#include <unordered_map>
+
 using namespace Wt;
+
+Radio radio;
 
 /*
  * A simple hello world application class which demonstrates how to react
@@ -32,7 +41,10 @@ private:
   WLineEdit *nameEdit_;
   WText *greeting_;
 
-  void greet();
+  void readRadioData();
+  void createWidgets(std::unordered_map< int, Location* > configuredLocations);
+
+  std::unordered_map<int, std::unordered_map<int, Wt::WCheckBox*> > mLocationCheckBoxes;
 };
 
 /*
@@ -44,18 +56,33 @@ private:
 HelloApplication::HelloApplication(const WEnvironment& env)
   : WApplication(env)
 {
-  setCssTheme("bootstrap");
-  setTitle("Hello world");                               // application title
+    // Choice of theme: defaults to bootstrap3 but can be overridden using
+    // a theme parameter (for testing)
+    const std::string *themePtr = env.getParameter("theme");
+    std::string theme;
+    if (!themePtr)
+        theme = "bootstrap3";
+    else
+        theme = *themePtr;
 
-  root()->addWidget(new WText("Your name, please ? "));  // show some text
-  nameEdit_ = new WLineEdit(root());                     // allow text input
-  nameEdit_->setFocus();                                 // give focus
+    if (theme == "bootstrap3") {
+        Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);
+        bootstrapTheme->setVersion(Wt::WBootstrapTheme::Version3);
+        bootstrapTheme->setResponsive(true);
+        setTheme(bootstrapTheme);
 
-  WPushButton *button
-    = new WPushButton("Greet me.", root());              // create a button
-  button->setMargin(5, Left);                            // add 5 pixels margin
+        // load the default bootstrap3 (sub-)theme
+        useStyleSheet("resources/themes/bootstrap/3/bootstrap-theme.min.css");
+    } else if (theme == "bootstrap2") {
+        Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);
+        bootstrapTheme->setResponsive(true);
+        setTheme(bootstrapTheme);
+    } else {
+        setTheme(new Wt::WCssTheme(theme));
+    }
 
-  root()->addWidget(new WBreak());                       // insert a line break
+
+  setTitle("Home Automation");                               // application title
 
   greeting_ = new WText(root());                         // empty text
 
@@ -64,13 +91,13 @@ HelloApplication::HelloApplication(const WEnvironment& env)
    *
    * - simple Wt-way
    */
-  button->clicked().connect(this, &HelloApplication::greet);
+//   button->clicked().connect(this, &HelloApplication::greet);
 
   /*
    * - using an arbitrary function object (binding values with boost::bind())
    */
-  nameEdit_->enterPressed().connect
-    (boost::bind(&HelloApplication::greet, this));
+//   nameEdit_->enterPressed().connect
+//     (boost::bind(&HelloApplication::greet, this));
 
   /*
    * - using a c++0x lambda:
@@ -79,16 +106,53 @@ HelloApplication::HelloApplication(const WEnvironment& env)
   //       greeting_->setText("Hello there, " + nameEdit_->text());
   // }));
 
-  Radio::instance();
+    auto l0 = new Location(0, &radio, this);
+    auto l1 = new Location(1, &radio, this);
+
+    auto appliances0 = l0->initAppliances(std::vector<int> { 2, 3, 4, 5 });
+    auto appliances1 = l1->initAppliances(std::vector<int> { 2, 3, 4, 5 });
+
+    radio.configureLocation(l0);
+    radio.configureLocation(l1);
+    radio.startListening();
+
+    createWidgets(radio.configuredLocations());
+
+    std::cout << "START TIMER " << std::endl;
+    auto timer = new Wt::WTimer(this);
+    timer->setInterval(2000);
+    timer->timeout().connect(this, &HelloApplication::readRadioData);
+    timer->start();
 }
 
-void HelloApplication::greet()
+void HelloApplication::readRadioData()
 {
-    auto l = new Location(0);
-    Appliance *a = l->initAppliances(vector<int> { 2, 3, 4, 5 }).at(0);
+    greeting_->setText("Refreshing...");
+    processEvents();
+    radio.readRadioData();
+    greeting_->setText("Done");
+}
 
-    Radio::instance()->configureLocation(l);
-    a->activate();
+void HelloApplication::createWidgets(std::unordered_map< int, Location* > configuredLocations)
+{
+    for (auto location : configuredLocations) {
+        int sensorId = location.first;
+        Location *l = location.second;
+
+        for (auto appliance : l->appliances()) {
+            int applianceNumber = appliance.first;
+            Appliance *a = appliance.second;
+
+            root()->addWidget(new WBreak());
+            Wt::WCheckBox *checkBox = new Wt::WCheckBox(Wt::WString("Room {1} Appliance {2}").arg(sensorId).arg(applianceNumber), root());
+            checkBox->setEnabled(false);
+            a->activated.connect(checkBox, &Wt::WCheckBox::setChecked);
+            a->deactivated.connect(checkBox, &Wt::WCheckBox::setUnChecked);
+
+            Wt::WPushButton *button = new Wt::WPushButton("Toggle", root());
+            button->clicked().connect(a, &Appliance::toggle);
+        }
+    }
 }
 
 WApplication *createApplication(const WEnvironment& env)

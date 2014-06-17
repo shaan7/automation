@@ -1,7 +1,6 @@
 #include "radio.h"
 
 #include <Wt/WString>
-#include <Wt/WTimer>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -15,16 +14,6 @@
 namespace {
     static const uint64_t BASE_PIPE = 0xF0F0F0F0E0LL;
     static const int BUFFER_SIZE = 128;
-}
-
-Radio *Radio::mInstance = nullptr;
-
-Radio* Radio::instance()
-{
-    if (!mInstance) {
-        mInstance = new Radio();
-    }
-    return mInstance;
 }
 
 Radio::Radio(Wt::WObject* parent): WObject(parent)
@@ -42,19 +31,15 @@ Radio::Radio(Wt::WObject* parent): WObject(parent)
     // Dump the configuration of the rf unit for debugging
     //
     mRadio.printDetails();
-
-    std::cout << "START TIMER " << std::endl;
-    auto timer = new Wt::WTimer(this);
-    timer->setInterval(100);
-    timer->timeout().connect(this, &Radio::readRadioData);
-    timer->start();
-
-    mRadio.startListening();
-    startListeningToSensor(0);
 }
 
 bool Radio::configureLocation(Location *location)
 {
+    if (mConfiguredLocations.count(location->sensorId())) {
+        std::cerr << "Location " << location->sensorId() << " already configured" << std::endl;
+        return false;
+    }
+
     std::vector<std::string> outputPins;
     for (auto appliance : location->appliances()) {
         outputPins.push_back(boost::lexical_cast<string>(appliance.second->applianceNumber()));
@@ -65,34 +50,51 @@ bool Radio::configureLocation(Location *location)
 
     startListeningToSensor(location);
     writeToSensor(location->sensorId(), configuration);
+
+    mConfiguredLocations.insert(std::make_pair(location->sensorId(), location));
 }
 
 bool Radio::activateAppliance(Appliance* appliance)
 {
     auto sensorId = appliance->location()->sensorId();
+    std::cout << "ACTIVATING " << sensorId << " APPLIANCE " << appliance->applianceNumber() << std::endl;
+
     auto data = Wt::WString("{1},1").arg(appliance->applianceNumber()).toUTF8();
-    return mRadio.write(data.c_str(), data.length()+1);
+
+    return writeToSensor(sensorId, data);
+}
+
+bool Radio::deactivateAppliance(Appliance* appliance)
+{
+    auto sensorId = appliance->location()->sensorId();
+    std::cout << "DEACTIVATING " << sensorId << " APPLIANCE " << appliance->applianceNumber() << std::endl;
+
+    auto data = Wt::WString("{1},0").arg(appliance->applianceNumber()).toUTF8();
+
+    return writeToSensor(sensorId, data);
 }
 
 bool Radio::writeToSensor(int sensorId, const string& data)
 {
+    mRadio.stopListening();
     mRadio.openWritingPipe(BASE_PIPE + 1 + 2*sensorId);
-    return mRadio.write(data.c_str(), data.length()+1);
+    bool result = mRadio.write(data.c_str(), data.length()+1);
+    mRadio.startListening();
+
+    std::cout << (result ? "OK" : "FAIL") << std::endl;
+    return result;
 }
 
 void Radio::startListeningToSensor(Location* location)
 {
-    std::cout << "Starting to listen to " << location->sensorId() << std::endl;
+    mReadingPipesOpened++;
+    std::cout << "Starting to listen to " << location->sensorId() << " on pipe " <<  mReadingPipesOpened << std::endl;
     mRadio.openReadingPipe(mReadingPipesOpened,
                            BASE_PIPE + 2 + 2*location->sensorId());
-    mReadingPipesOpened++;
-
-    mConfiguredLocations.insert(make_pair(location->sensorId(), location));
 }
 
 void Radio::readRadioData()
 {
-    std::cout << "Attempt radio data" << std::endl;
     char receivePayload[BUFFER_SIZE];
     uint8_t pipe;
 
@@ -122,8 +124,6 @@ void Radio::processDataFromRadio(const string& data)
 
 void Radio::processSensorStatusData(int sensorId, const string& pinStatus)
 {
-    std::cout << "Processing pin data " << pinStatus << std::endl;
-
     if (pinStatus.length() == 0) {
         return;
     }
@@ -133,6 +133,23 @@ void Radio::processSensorStatusData(int sensorId, const string& pinStatus)
     int pinNumber = boost::lexical_cast<int>(pinAndValue.at(0));
     int value = boost::lexical_cast<int>(pinAndValue.at(1));
 
-    Location *location = mConfiguredLocations[sensorId];
-    location->applianceUpdate(pinNumber, value);
+    try {
+        Location *location = mConfiguredLocations.at(sensorId);
+        location->applianceUpdate(pinNumber, value);
+    } catch (std::out_of_range e) {
+        std::cerr << "Failed to fetch location for " << sensorId << std::endl;
+    }
+}
+
+void Radio::startListening()
+{
+    if (!mIsListening) {
+        mRadio.startListening();
+        mIsListening = true;
+    }
+}
+
+std::unordered_map< int, Location* > Radio::configuredLocations()
+{
+    return mConfiguredLocations;
 }
