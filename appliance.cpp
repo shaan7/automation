@@ -2,6 +2,7 @@
 #include "radio.h"
 
 #include <Wt/WTimer>
+// #include <Wt/WApplication>
 
 #include <iostream>
 
@@ -49,6 +50,9 @@ bool Appliance::toggle()
 void Appliance::setActive(bool active)
 {
     if (mActive != active) {
+//         std::cout << Wt::WApplication::instance()->sessionId()
+//             << " UPDATING APPLIANCE " << mLocation->sensorId()
+//             << " " << mApplianceNumber << " " << active << std::endl;
         mActive = active;
 
         if (mActive) {

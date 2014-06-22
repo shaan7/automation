@@ -1,10 +1,12 @@
 #include "location.h"
 #include "appliance.h"
+#include <Wt/WApplication>
 
 #include <iostream>
 
-Location::Location(int sensorId, Radio* radio, Wt::WObject* parent)
+Location::Location(std::string sessionId, int sensorId, Radio* radio, Wt::WObject* parent)
     : WObject(parent)
+    , mSessionId(sessionId)
     , mSensorId(sensorId)
     , mRadio(radio)
 {
@@ -40,6 +42,8 @@ void Location::applianceUpdate(int pinNumber, int value)
     } catch (std::out_of_range e) {
 //         std::cerr << "Could not find appliance " << pinNumber << " in location " << mSensorId << std::endl;
     }
+
+    Wt::WApplication::instance()->triggerUpdate();
 }
 
 bool Location::configured() const
@@ -59,4 +63,9 @@ void Location::setConfigured(bool configured)
             }
         }
     }
+}
+
+std::string Location::sessionId() const
+{
+    return mSessionId;
 }

@@ -1,6 +1,7 @@
 #include "radio.h"
 
 #include <Wt/WString>
+#include <Wt/WServer>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/join.hpp>
@@ -35,13 +36,25 @@ Radio::Radio(Wt::WObject* parent): WObject(parent)
 
 bool Radio::configureLocation(Location *location)
 {
-    if (isLocationConfigured(location->sensorId())) {
-        std::cerr << "Location " << location->sensorId() << " already configured" << std::endl;
-        return false;
+    if (!isLocationConfigured(location->sensorId())) {
+        startListeningToSensor(location);
     }
 
-    startListeningToSensor(location);
     mConfiguredLocations.insert(std::make_pair(location->sensorId(), location));
+    return true;
+}
+
+void Radio::removeLocation(Location* location)
+{
+    auto locations = mConfiguredLocations.equal_range(location->sensorId());
+    for (auto it=locations.first;it!=locations.second;++it) {
+        if (location == it->second) {
+            std::cout << "Removing location " << location->sensorId()
+                      << " for " << location->sessionId() << std::endl;
+            mConfiguredLocations.erase(it);
+            return;
+        }
+    }
 }
 
 bool Radio::sendConfigurationToLocation(Location *location)
@@ -122,12 +135,12 @@ void Radio::processDataFromRadio(const string& data)
 
     if (pinStatusString == "-1") {      //The location for this sensor is not configured yet
         if (isLocationConfigured(sourceSensorId)) {
-            auto location = mConfiguredLocations.at(sourceSensorId);
+            Location *location = mConfiguredLocations.find(sourceSensorId)->second;
             location->setConfigured(false);
-            sendConfigurationToLocation(mConfiguredLocations.at(sourceSensorId));
+            sendConfigurationToLocation(location);
         }
     } else {    //The location for this sensor is configured and sending us state
-        auto location = mConfiguredLocations.at(sourceSensorId);
+        Location *location = mConfiguredLocations.find(sourceSensorId)->second;
         if (!location->configured()) {
             location->setConfigured(true);
         }
@@ -153,8 +166,12 @@ void Radio::processSensorStatusData(int sensorId, const string& pinStatus)
     int value = boost::lexical_cast<int>(pinAndValue.at(1));
 
     try {
-        Location *location = mConfiguredLocations.at(sensorId);
-        location->applianceUpdate(pinNumber, value);
+        auto locations = mConfiguredLocations.equal_range(sensorId);
+        for (auto it=locations.first;it!=locations.second;++it) {
+            Location *l = it->second;
+            boost::function<void(int, int)> f = boost::bind(&Location::applianceUpdate, l, _1, _2);
+            Wt::WServer::instance()->post(l->sessionId(), boost::bind(f, pinNumber, value));
+        }
     } catch (std::out_of_range e) {
         std::cerr << "Failed to fetch location for " << sensorId << std::endl;
     }
@@ -168,7 +185,7 @@ void Radio::startListening()
     }
 }
 
-std::unordered_map< int, Location* > Radio::configuredLocations()
+std::multimap< int, Location* > Radio::configuredLocations()
 {
     return mConfiguredLocations;
 }

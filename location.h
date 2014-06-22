@@ -12,7 +12,7 @@ class Appliance;
 class Location : public Wt::WObject
 {
 public:
-    Location(int sensorId, Radio* radio, WObject* parent = 0);
+    Location(std::string sessionId, int sensorId, Radio* radio, WObject* parent = 0);
 
     std::unordered_map<int, Appliance*> initAppliances(std::vector<int> applianceNumbers);
     std::unordered_map<int, Appliance*> appliances() const;
@@ -23,11 +23,14 @@ public:
     void setConfigured(bool configured);
     bool configured() const;
 
+    std::string sessionId() const;
+
 private:
     int mSensorId;
     std::unordered_map<int, Appliance*> mAppliances;
     Radio *mRadio;
     bool mConfigured = false;
+    std::string mSessionId;
 };
 
 #endif // LOCATION_H

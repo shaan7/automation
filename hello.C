@@ -36,15 +36,17 @@ class HelloApplication : public WApplication
 {
 public:
     HelloApplication(const WEnvironment& env);
+    virtual ~HelloApplication();
 
 private:
     WLineEdit *nameEdit_;
     WText *greeting_;
 
     void readRadioData();
-    void createWidgets(std::unordered_map< int, Location* > configuredLocations);
+    void createWidgets(std::vector<Location*> configuredLocations);
     void applyTheme(const WEnvironment& env);
 
+    std::vector<Location*> mLocations;
     std::unordered_map<int, std::unordered_map<int, Wt::WCheckBox*> > mLocationCheckBoxes;
 };
 
@@ -65,8 +67,9 @@ HelloApplication::HelloApplication(const WEnvironment& env)
 
     greeting_ = new WText(root());                         // empty text
 
-    auto l0 = new Location(0, &radio, this);
-    auto l1 = new Location(1, &radio, this);
+    auto sessionId = Wt::WApplication::instance()->sessionId();
+    auto l0 = new Location(sessionId, 0, &radio, this);
+    auto l1 = new Location(sessionId, 1, &radio, this);
 
     auto appliances0 = l0->initAppliances(std::vector<int> { 2, 3, 4, 5 });
     auto appliances1 = l1->initAppliances(std::vector<int> { 2, 3, 4, 5 });
@@ -75,7 +78,8 @@ HelloApplication::HelloApplication(const WEnvironment& env)
     radio.configureLocation(l1);
     radio.startListening();
 
-    createWidgets(radio.configuredLocations());
+    mLocations = {l0, l1};
+    createWidgets(mLocations);
 
     std::cout << "START TIMER " << std::endl;
     auto timer = new Wt::WTimer(this);
@@ -87,16 +91,22 @@ HelloApplication::HelloApplication(const WEnvironment& env)
 void HelloApplication::readRadioData()
 {
     greeting_->setText("Refreshing...");
-    processEvents();
+    Wt::WApplication::instance()->processEvents();
     radio.readRadioData();
     greeting_->setText("Done");
 }
 
-void HelloApplication::createWidgets(std::unordered_map< int, Location* > configuredLocations)
+HelloApplication::~HelloApplication()
 {
-    for (auto location : configuredLocations) {
-        int sensorId = location.first;
-        Location *l = location.second;
+    for (auto location : mLocations) {
+        radio.removeLocation(location);
+    }
+}
+
+void HelloApplication::createWidgets(std::vector<Location*> configuredLocations)
+{
+    for (auto l : configuredLocations) {
+        int sensorId = l->sensorId();
 
         for (auto appliance : l->appliances()) {
             int applianceNumber = appliance.first;
