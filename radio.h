@@ -35,6 +35,8 @@ private:
 
     void processDataFromRadio(const std::string &data);
     void processSensorStatusData(int sensorId, const std::string &pinStatus);
+    bool isLocationConfigured(int sensorId);
+    bool sendConfigurationToLocation(Location* location);
 };
 
 #endif // RADIO_H

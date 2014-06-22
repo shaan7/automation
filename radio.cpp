@@ -35,11 +35,17 @@ Radio::Radio(Wt::WObject* parent): WObject(parent)
 
 bool Radio::configureLocation(Location *location)
 {
-    if (mConfiguredLocations.count(location->sensorId())) {
+    if (isLocationConfigured(location->sensorId())) {
         std::cerr << "Location " << location->sensorId() << " already configured" << std::endl;
         return false;
     }
 
+    startListeningToSensor(location);
+    mConfiguredLocations.insert(std::make_pair(location->sensorId(), location));
+}
+
+bool Radio::sendConfigurationToLocation(Location *location)
+{
     std::vector<std::string> outputPins;
     for (auto appliance : location->appliances()) {
         outputPins.push_back(boost::lexical_cast<string>(appliance.second->applianceNumber()));
@@ -48,10 +54,7 @@ bool Radio::configureLocation(Location *location)
     std::string outputConfigurationString = boost::algorithm::join(outputPins, ",");
     std::string configuration = ";" + outputConfigurationString;
 
-    startListeningToSensor(location);
     writeToSensor(location->sensorId(), configuration);
-
-    mConfiguredLocations.insert(std::make_pair(location->sensorId(), location));
 }
 
 bool Radio::activateAppliance(Appliance* appliance)
@@ -76,6 +79,7 @@ bool Radio::deactivateAppliance(Appliance* appliance)
 
 bool Radio::writeToSensor(int sensorId, const string& data)
 {
+    std::cout << "Writing " << data << " to " << sensorId << "... ";
     mRadio.stopListening();
     mRadio.openWritingPipe(BASE_PIPE + 1 + 2*sensorId);
     bool result = mRadio.write(data.c_str(), data.length()+1);
@@ -114,11 +118,26 @@ void Radio::processDataFromRadio(const string& data)
 
     int sourceSensorId = boost::lexical_cast<int>(stringList.at(0));
 
-    std::vector<std::string> pinStatuses;
-    boost::split(pinStatuses, stringList.at(1), boost::is_any_of(";"));
+    std::string pinStatusString = stringList.at(1);
 
-    for (auto pinStatus : pinStatuses) {
-        processSensorStatusData(sourceSensorId, pinStatus);
+    if (pinStatusString == "-1") {      //The location for this sensor is not configured yet
+        if (isLocationConfigured(sourceSensorId)) {
+            auto location = mConfiguredLocations.at(sourceSensorId);
+            location->setConfigured(false);
+            sendConfigurationToLocation(mConfiguredLocations.at(sourceSensorId));
+        }
+    } else {    //The location for this sensor is configured and sending us state
+        auto location = mConfiguredLocations.at(sourceSensorId);
+        if (!location->configured()) {
+            location->setConfigured(true);
+        }
+
+        std::vector<std::string> pinStatuses;
+        boost::split(pinStatuses, pinStatusString, boost::is_any_of(";"));
+
+        for (auto pinStatus : pinStatuses) {
+            processSensorStatusData(sourceSensorId, pinStatus);
+        }
     }
 }
 
@@ -152,4 +171,9 @@ void Radio::startListening()
 std::unordered_map< int, Location* > Radio::configuredLocations()
 {
     return mConfiguredLocations;
+}
+
+bool Radio::isLocationConfigured(int sensorId)
+{
+    return mConfiguredLocations.count(sensorId) > 0;
 }

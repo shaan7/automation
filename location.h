@@ -20,10 +20,14 @@ public:
     int sensorId() const;
     void applianceUpdate(int pinNumber, int value);
 
+    void setConfigured(bool configured);
+    bool configured() const;
+
 private:
     int mSensorId;
     std::unordered_map<int, Appliance*> mAppliances;
     Radio *mRadio;
+    bool mConfigured = false;
 };
 
 #endif // LOCATION_H

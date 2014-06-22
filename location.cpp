@@ -1,6 +1,7 @@
 #include "location.h"
-
 #include "appliance.h"
+
+#include <iostream>
 
 Location::Location(int sensorId, Radio* radio, Wt::WObject* parent)
     : WObject(parent)
@@ -38,5 +39,24 @@ void Location::applianceUpdate(int pinNumber, int value)
         }
     } catch (std::out_of_range e) {
 //         std::cerr << "Could not find appliance " << pinNumber << " in location " << mSensorId << std::endl;
+    }
+}
+
+bool Location::configured() const
+{
+    return mConfigured;
+}
+
+void Location::setConfigured(bool configured)
+{
+    if (mConfigured == configured) {
+        std::cerr << "Location " << sensorId() << " is already configured" << std::endl;
+    } else {
+        mConfigured = configured;
+        if (mConfigured) {
+            for (auto appliance : mAppliances) {
+                appliance.second->sync();
+            }
+        }
     }
 }

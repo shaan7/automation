@@ -18,6 +18,7 @@ public:
     bool activate();
     bool deactivate();
     void toggle();
+    bool sync();
 
     Wt::Signal<void> activated;
     Wt::Signal<void> deactivated;

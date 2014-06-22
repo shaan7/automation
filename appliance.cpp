@@ -49,3 +49,8 @@ void Appliance::setActive(bool active)
         }
     }
 }
+
+bool Appliance::sync()
+{
+    return mActive ? activate() : deactivate();
+}
