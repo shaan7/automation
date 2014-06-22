@@ -1,6 +1,14 @@
 #include "appliance.h"
 #include "radio.h"
 
+#include <Wt/WTimer>
+
+#include <iostream>
+
+namespace {
+    static const int RETRY_TIMEOUT = 3000;
+}
+
 Appliance::Appliance(int applianceNumber, Location* location, Radio* radio, Wt::WObject* parent)
     : WObject(parent)
     , mApplianceNumber(applianceNumber)
@@ -21,20 +29,21 @@ Location* Appliance::location() const
 
 bool Appliance::activate()
 {
+    mExpectedActiveState = true;
+    Wt::WTimer::singleShot(RETRY_TIMEOUT, this, &Appliance::retryIfNeeded);
     return mRadio->activateAppliance(this);
 }
 
 bool Appliance::deactivate()
 {
+    mExpectedActiveState = false;
+    Wt::WTimer::singleShot(RETRY_TIMEOUT, this, &Appliance::retryIfNeeded);
     return mRadio->deactivateAppliance(this);
 }
 
-void Appliance::toggle()
+bool Appliance::toggle()
 {
-    if (mActive)
-        deactivate();
-    else
-        activate();
+    return mActive ? deactivate() : activate();
 }
 
 void Appliance::setActive(bool active)
@@ -53,4 +62,19 @@ void Appliance::setActive(bool active)
 bool Appliance::sync()
 {
     return mActive ? activate() : deactivate();
+}
+
+void Appliance::retryIfNeeded()
+{
+    if (mActive != mExpectedActiveState) {
+        std::cout << "Retrying location " << location()->sensorId()
+                  << " appliance " << mApplianceNumber
+                  << " to " << mExpectedActiveState << std::endl;
+
+        if (mExpectedActiveState) {
+            activate();
+        } else {
+            deactivate();
+        }
+    }
 }

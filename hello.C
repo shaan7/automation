@@ -120,7 +120,7 @@ HelloApplication::HelloApplication(const WEnvironment& env)
 
     std::cout << "START TIMER " << std::endl;
     auto timer = new Wt::WTimer(this);
-    timer->setInterval(2000);
+    timer->setInterval(1000);
     timer->timeout().connect(this, &HelloApplication::readRadioData);
     timer->start();
 }
@@ -150,7 +150,13 @@ void HelloApplication::createWidgets(std::unordered_map< int, Location* > config
             a->deactivated.connect(checkBox, &Wt::WCheckBox::setUnChecked);
 
             Wt::WPushButton *button = new Wt::WPushButton("Toggle", root());
-            button->clicked().connect(a, &Appliance::toggle);
+            button->clicked().connect(std::bind([a] () { a->toggle(); }));
+
+            button = new Wt::WPushButton("Turn ON", root());
+            button->clicked().connect(std::bind([a] () { a->activate(); }));
+
+            button = new Wt::WPushButton("Turn OFF", root());
+            button->clicked().connect(std::bind([a] () { a->deactivate(); }));
         }
     }
 }

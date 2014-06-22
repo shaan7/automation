@@ -17,7 +17,7 @@ public:
 
     bool activate();
     bool deactivate();
-    void toggle();
+    bool toggle();
     bool sync();
 
     Wt::Signal<void> activated;
@@ -30,6 +30,9 @@ private:
     Location *mLocation;
     Radio *mRadio;
     bool mActive = false;
+    bool mExpectedActiveState = false;
+
+    void retryIfNeeded();
 };
 
 #endif // APPLIANCE_H
