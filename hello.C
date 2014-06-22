@@ -43,6 +43,7 @@ private:
 
   void readRadioData();
   void createWidgets(std::unordered_map< int, Location* > configuredLocations);
+    void applyTheme(const WEnvironment& env);
 
   std::unordered_map<int, std::unordered_map<int, Wt::WCheckBox*> > mLocationCheckBoxes;
 };
@@ -56,55 +57,13 @@ private:
 HelloApplication::HelloApplication(const WEnvironment& env)
   : WApplication(env)
 {
-    // Choice of theme: defaults to bootstrap3 but can be overridden using
-    // a theme parameter (for testing)
-    const std::string *themePtr = env.getParameter("theme");
-    std::string theme;
-    if (!themePtr)
-        theme = "bootstrap3";
-    else
-        theme = *themePtr;
+  WApplication::instance()->enableUpdates(true);
 
-    if (theme == "bootstrap3") {
-        Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);
-        bootstrapTheme->setVersion(Wt::WBootstrapTheme::Version3);
-        bootstrapTheme->setResponsive(true);
-        setTheme(bootstrapTheme);
-
-        // load the default bootstrap3 (sub-)theme
-        useStyleSheet("resources/themes/bootstrap/3/bootstrap-theme.min.css");
-    } else if (theme == "bootstrap2") {
-        Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);
-        bootstrapTheme->setResponsive(true);
-        setTheme(bootstrapTheme);
-    } else {
-        setTheme(new Wt::WCssTheme(theme));
-    }
-
+  applyTheme(env);
 
   setTitle("Home Automation");                               // application title
 
   greeting_ = new WText(root());                         // empty text
-
-  /*
-   * Connect signals with slots
-   *
-   * - simple Wt-way
-   */
-//   button->clicked().connect(this, &HelloApplication::greet);
-
-  /*
-   * - using an arbitrary function object (binding values with boost::bind())
-   */
-//   nameEdit_->enterPressed().connect
-//     (boost::bind(&HelloApplication::greet, this));
-
-  /*
-   * - using a c++0x lambda:
-   */
-  // b->clicked().connect(std::bind([=]() { 
-  //       greeting_->setText("Hello there, " + nameEdit_->text());
-  // }));
 
     auto l0 = new Location(0, &radio, this);
     auto l1 = new Location(1, &radio, this);
@@ -158,6 +117,34 @@ void HelloApplication::createWidgets(std::unordered_map< int, Location* > config
             button = new Wt::WPushButton("Turn OFF", root());
             button->clicked().connect(std::bind([a] () { a->deactivate(); }));
         }
+    }
+}
+
+void HelloApplication::applyTheme(const WEnvironment &env)
+{
+    // Choice of theme: defaults to bootstrap3 but can be overridden using
+    // a theme parameter (for testing)
+    const std::string *themePtr = env.getParameter("theme");
+    std::string theme;
+    if (!themePtr)
+        theme = "bootstrap3";
+    else
+        theme = *themePtr;
+
+    if (theme == "bootstrap3") {
+        Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);
+        bootstrapTheme->setVersion(Wt::WBootstrapTheme::Version3);
+        bootstrapTheme->setResponsive(true);
+        setTheme(bootstrapTheme);
+
+        // load the default bootstrap3 (sub-)theme
+        useStyleSheet("resources/themes/bootstrap/3/bootstrap-theme.min.css");
+    } else if (theme == "bootstrap2") {
+        Wt::WBootstrapTheme *bootstrapTheme = new Wt::WBootstrapTheme(this);
+        bootstrapTheme->setResponsive(true);
+        setTheme(bootstrapTheme);
+    } else {
+        setTheme(new Wt::WCssTheme(theme));
     }
 }
 
