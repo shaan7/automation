@@ -6,7 +6,7 @@
 #include <iostream>
 
 namespace {
-    static const int RETRY_TIMEOUT = 3000;
+static const int RETRY_TIMEOUT = 3000;
 }
 
 Appliance::Appliance(int applianceNumber, Location* location, Radio* radio, Wt::WObject* parent)

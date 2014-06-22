@@ -12,8 +12,8 @@
 #include <iostream>
 
 namespace {
-    static const uint64_t BASE_PIPE = 0xF0F0F0F0E0LL;
-    static const int BUFFER_SIZE = 128;
+static const uint64_t BASE_PIPE = 0xF0F0F0F0E0LL;
+static const int BUFFER_SIZE = 128;
 }
 
 Radio::Radio(Wt::WObject* parent): WObject(parent)

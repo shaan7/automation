@@ -35,17 +35,17 @@ Radio radio;
 class HelloApplication : public WApplication
 {
 public:
-  HelloApplication(const WEnvironment& env);
+    HelloApplication(const WEnvironment& env);
 
 private:
-  WLineEdit *nameEdit_;
-  WText *greeting_;
+    WLineEdit *nameEdit_;
+    WText *greeting_;
 
-  void readRadioData();
-  void createWidgets(std::unordered_map< int, Location* > configuredLocations);
+    void readRadioData();
+    void createWidgets(std::unordered_map< int, Location* > configuredLocations);
     void applyTheme(const WEnvironment& env);
 
-  std::unordered_map<int, std::unordered_map<int, Wt::WCheckBox*> > mLocationCheckBoxes;
+    std::unordered_map<int, std::unordered_map<int, Wt::WCheckBox*> > mLocationCheckBoxes;
 };
 
 /*
@@ -55,15 +55,15 @@ private:
  * application constructor.
 */
 HelloApplication::HelloApplication(const WEnvironment& env)
-  : WApplication(env)
+    : WApplication(env)
 {
-  WApplication::instance()->enableUpdates(true);
+    WApplication::instance()->enableUpdates(true);
 
-  applyTheme(env);
+    applyTheme(env);
 
-  setTitle("Home Automation");                               // application title
+    setTitle("Home Automation");                               // application title
 
-  greeting_ = new WText(root());                         // empty text
+    greeting_ = new WText(root());                         // empty text
 
     auto l0 = new Location(0, &radio, this);
     auto l1 = new Location(1, &radio, this);
@@ -109,13 +109,19 @@ void HelloApplication::createWidgets(std::unordered_map< int, Location* > config
             a->deactivated.connect(checkBox, &Wt::WCheckBox::setUnChecked);
 
             Wt::WPushButton *button = new Wt::WPushButton("Toggle", root());
-            button->clicked().connect(std::bind([a] () { a->toggle(); }));
+            button->clicked().connect(std::bind([a] () {
+                a->toggle();
+            }));
 
             button = new Wt::WPushButton("Turn ON", root());
-            button->clicked().connect(std::bind([a] () { a->activate(); }));
+            button->clicked().connect(std::bind([a] () {
+                a->activate();
+            }));
 
             button = new Wt::WPushButton("Turn OFF", root());
-            button->clicked().connect(std::bind([a] () { a->deactivate(); }));
+            button->clicked().connect(std::bind([a] () {
+                a->deactivate();
+            }));
         }
     }
 }
@@ -150,26 +156,26 @@ void HelloApplication::applyTheme(const WEnvironment &env)
 
 WApplication *createApplication(const WEnvironment& env)
 {
-  /*
-   * You could read information from the environment to decide whether
-   * the user has permission to start a new application
-   */
-  return new HelloApplication(env);
+    /*
+     * You could read information from the environment to decide whether
+     * the user has permission to start a new application
+     */
+    return new HelloApplication(env);
 }
 
 int main(int argc, char **argv)
 {
-  /*
-   * Your main method may set up some shared resources, but should then
-   * start the server application (FastCGI or httpd) that starts listening
-   * for requests, and handles all of the application life cycles.
-   *
-   * The last argument to WRun specifies the function that will instantiate
-   * new application objects. That function is executed when a new user surfs
-   * to the Wt application, and after the library has negotiated browser
-   * support. The function should return a newly instantiated application
-   * object.
-   */
-  return WRun(argc, argv, &createApplication);
+    /*
+     * Your main method may set up some shared resources, but should then
+     * start the server application (FastCGI or httpd) that starts listening
+     * for requests, and handles all of the application life cycles.
+     *
+     * The last argument to WRun specifies the function that will instantiate
+     * new application objects. That function is executed when a new user surfs
+     * to the Wt application, and after the library has negotiated browser
+     * support. The function should return a newly instantiated application
+     * object.
+     */
+    return WRun(argc, argv, &createApplication);
 }
 
